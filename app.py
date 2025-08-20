@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import pyotp
 import hashlib
+import time
 
 app = Flask(__name__)
 
@@ -10,7 +11,7 @@ def get_access_token():
     try:
         # Get JSON payload from request
         data = request.get_json()
-        print("Received payload:", data)  # Debugging: Log the received JSON
+        print("Received payload:", data)
         if not data:
             return jsonify({"error": "No JSON payload provided"}), 400
 
@@ -30,13 +31,13 @@ def get_access_token():
             ("totp_secret", totp_secret)
         ] if not value]
         if missing_fields:
-            print("Missing fields:", missing_fields)  # Debugging: Log missing fields
+            print("Missing fields:", missing_fields)
             return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
         # Step 1: Generate TOTP
         totp = pyotp.TOTP(totp_secret)
         twofa_value = totp.now()
-        print("Generated TOTP:", twofa_value)  # Debugging
+        print("Generated TOTP:", twofa_value, "at timestamp:", int(time.time()))
 
         # Step 2: Login (Step 1 - Submit user_id and password)
         login_url = "https://kite.zerodha.com/api/login"
@@ -52,7 +53,7 @@ def get_access_token():
         login_response = requests.post(login_url, data=login_payload, headers=headers)
         login_response.raise_for_status()
         login_data = login_response.json()
-        print("Login Response:", login_data)  # Debugging
+        print("Login Response:", login_data)
         if login_data.get("status") != "success":
             return jsonify({"error": f"Login failed: {login_data.get('message')}"}), 400
         request_id = login_data["data"]["request_id"]
@@ -64,11 +65,11 @@ def get_access_token():
             "request_id": request_id,
             "twofa_value": twofa_value
         }
-
+        print("TFA Payload:", tfa_payload)  # Debugging
         tfa_response = requests.post(tfa_url, data=tfa_payload, headers=headers)
         tfa_response.raise_for_status()
         tfa_data = tfa_response.json()
-        print("TFA Response:", tfa_data)  # Debugging
+        print("TFA Response:", tfa_data)
         if tfa_data.get("status") != "success":
             return jsonify({"error": f"TFA failed: {tfa_data.get('message')}"}), 400
         if "data" not in tfa_data or "request_token" not in tfa_data["data"]:
