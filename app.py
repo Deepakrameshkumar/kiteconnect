@@ -10,6 +10,7 @@ def get_access_token():
     try:
         # Get JSON payload from request
         data = request.get_json()
+        print("Received payload:", data)  # Debugging: Log the received JSON
         if not data:
             return jsonify({"error": "No JSON payload provided"}), 400
 
@@ -21,8 +22,16 @@ def get_access_token():
         totp_secret = data.get("totp_secret")
 
         # Validate inputs
-        if not all([api_key, api_secret, login_id, login_password, totp_secret]):
-            return jsonify({"error": "Missing required fields"}), 400
+        missing_fields = [field for field, value in [
+            ("api_key", api_key),
+            ("api_secret", api_secret),
+            ("login_id", login_id),
+            ("login_password", login_password),
+            ("totp_secret", totp_secret)
+        ] if not value]
+        if missing_fields:
+            print("Missing fields:", missing_fields)  # Debugging: Log missing fields
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
         # Step 1: Generate TOTP
         totp = pyotp.TOTP(totp_secret)
